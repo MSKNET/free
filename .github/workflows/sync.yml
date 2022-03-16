@@ -1,0 +1,47 @@
+name: Sync Fork
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 0,4,8,12,16,20 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout master
+        uses: actions/checkout@v2
+        with:
+          ref: master
+          ssh-key: ${{secrets.DEPLOY_KEY}}
+
+      - name: configure environment
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+          git remote add upstream https://github.com/freefq/free.git
+
+      - name: synchronize
+        run: |
+          git pull upstream master
+          git push origin master
+
+      - name: checkout main
+        uses: actions/checkout@v2
+        with:
+          ref: main
+          path: main
+
+      - name: convert
+        run: |
+          base64 -d v2 > main/v2
+
+      - name: synchronize
+        run: |
+          cd main
+          git add .
+          git commit -m "update on `date +'%Y-%m-%d %H:%M:%S'`"
+          git push origin main
